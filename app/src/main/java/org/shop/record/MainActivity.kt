@@ -4,14 +4,14 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
-import android.graphics.Color
+import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.net.Uri
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import org.shop.record.databinding.ActivityMainBinding
@@ -21,6 +21,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
 
     private var recorder: MediaRecorder? = null
+    private var player: MediaPlayer? = null
     private var fileName: String = ""
 
     /** 앱의 상태
@@ -52,6 +53,30 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 State.PLAYING -> {}
+            }
+        }
+
+        binding.playButton.setOnClickListener {
+            when (state) {
+                State.RELEASE -> {
+                    onPlay(true)
+                }
+
+                else -> {
+                    // Nothing to do
+                }
+            }
+        }
+
+        binding.stopButton.setOnClickListener {
+            when (state) {
+                State.PLAYING -> {
+                    onPlay(false)
+                }
+
+                else -> {
+                    // Nothing to do
+                }
             }
         }
     }
@@ -90,6 +115,12 @@ class MainActivity : AppCompatActivity() {
         stopRecording()
     }
 
+    private fun onPlay(start: Boolean) = if (start) {
+        startPlaying()
+    } else {
+        stopPlaying()
+    }
+
     private fun startRecording() {
         state = State.RECORDING
         recorder = MediaRecorder().apply {
@@ -121,7 +152,7 @@ class MainActivity : AppCompatActivity() {
         binding.playButton.alpha = 0.3f
     }
 
-    private fun stopRecording(){
+    private fun stopRecording() {
         recorder?.apply {
             stop()
             release()
@@ -139,6 +170,36 @@ class MainActivity : AppCompatActivity() {
             ColorStateList.valueOf(ContextCompat.getColor(this, R.color.red))
         binding.playButton.isEnabled = true
         binding.playButton.alpha = 1.0f
+    }
+
+    private fun startPlaying() {
+        state = State.PLAYING
+        player = MediaPlayer().apply {
+            setDataSource(fileName)
+            try {
+                prepare()
+            } catch (e: IOException) {
+                Log.e("APP", "media player prepare fail $e")
+            }
+            start()
+        }
+
+        player?.setOnCompletionListener {
+            stopPlaying()
+        }
+
+        binding.recordButton.isEnabled = false
+        binding.recordButton.alpha = 0.3f
+    }
+
+    private fun stopPlaying() {
+        state = State.RELEASE
+
+        player?.release()
+        player = null
+
+        binding.recordButton.isEnabled = true
+        binding.recordButton.alpha = 1.0f
     }
 
     /**
